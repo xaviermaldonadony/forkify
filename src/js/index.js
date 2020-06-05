@@ -38,4 +38,11 @@ elements.searchForm.addEventListener('submit', (e) => {
 	controlSearch();
 });
 
-// 15, 13min
+elements.searchResPages.addEventListener('click', (e) => {
+	const btn = e.target.closest('.btn-inline');
+	if (btn) {
+		const gotoPage = parseInt(btn.dataset.goto, 10);
+		searchView.clearResults();
+		searchView.renderResults(state.search.result, gotoPage);
+	}
+});

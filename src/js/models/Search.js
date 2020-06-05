@@ -15,7 +15,7 @@ export default class Search {
 			// 	);
 			// http://www.recipepuppy.com/api/?i=onions,garlic&q=omelet&p=3
 			const res = await axios(
-				`https://api.edamam.com/search?q=${this.query}&app_id=${APP_ID}&app_key=${APP_KEY}&from=0&to=30`
+				`https://api.edamam.com/search?q=${this.query}&app_id=${APP_ID}&app_key=${APP_KEY}&from=0&to=50`
 			);
 
 			// const res = await axios(

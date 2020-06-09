@@ -26,12 +26,13 @@ const limitRecipeTitle = (title, limit = 17) => {
 
 	return title;
 };
-const renderRecipe = (recipe) => {
+const renderRecipe = (id, recipe) => {
 	const markup = `
 	  <li>
-	  <a class="results__link" href="#${
-			recipe.label
-		}"> <figure class="results__fig">
+	  <a class="results__link" href="#${recipe.shareAs.replace(
+			/(?:.*?\/){4}/,
+			''
+		)}-${id}"> <figure class="results__fig">
 	          <img src="${recipe.image}" alt="${recipe.label}">
 	      </figure>
 	      <div class="results__data">
@@ -79,8 +80,11 @@ export const renderResults = (recipes, page = 1, resPerPage = 10) => {
 	// Render results of current page
 	const start = (page - 1) * resPerPage;
 	const end = page * resPerPage;
+	let id = start;
 
-	recipes.slice(start, end).forEach((index) => renderRecipe(index.recipe));
+	recipes
+		.slice(start, end)
+		.forEach((index) => renderRecipe(id++, index.recipe));
 
 	//  Render pagination buttons
 	renderButtons(page, recipes.length, resPerPage);

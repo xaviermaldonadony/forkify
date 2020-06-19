@@ -2,6 +2,7 @@
 import Search from './models/Search';
 import Recipe from './models/Recipe';
 import * as searchView from './views/searchView';
+import * as recipeView from './views/recipeView';
 import { elements, renderLoader, clearLoader } from './views/base';
 
 /* Global state of the app
@@ -58,40 +59,71 @@ elements.searchResPages.addEventListener('click', (e) => {
 
 const controlRecipe = async () => {
 	let id = window.location.hash.replace('#', '');
-	id = id.replace(/(?:.*?\/){1}/, '').split('-');
 
-	// console.log(id, ' control recipe length');
-	// console.log('in controlR', id);
-	// console.log('test result ', state.search.result);
-	// if search object exsist we don't need to make an api call
-	console.log();
 	if (state.search && state.search.result !== undefined) {
-		// Prepare UI for changes
+		// Highlight selected search item
+		searchView.highlightSelected(id);
+		id = id.replace(/(?:.*?\/){1}/, '').split('-');
 		// Create new recipe object
 		state.recipe = new Recipe(state.search.result[id[1]].recipe);
 
+		// Set loader to a parent
+		renderLoader(elements.recipe);
 		// Get recipe data
 		state.recipe.getRecipe();
-		// Parse ingredients
-		state.recipe.parseIngredients();
-		// Render recipe
-		console.log('in control recipe, recipe.search ', state.recipe);
-		// use else if, only if the id exsists. and ui is not filled.
-		//  example would be a bookmark
-	} else if (id[0] !== '') {
+		console.log('before calling recipe helper', state.recipe);
+		controlRecipeHelper();
+	}
+	//only if the id exsists. and ui is not filled (state.search does not exsist).
+	//  example would be a bookmark
+	// else if (id[0] !== '') {
+	else if (id !== '') {
+		console.log(id);
+		id = id.replace(/(?:.*?\/){1}/, '').split('-');
 		state.recipe = new Recipe(false, id);
+		renderLoader(elements.recipe);
 		try {
 			await state.recipe.getRecipe();
-			state.recipe.parseIngredients();
-			console.log('in control recipe ', state.recipe);
+			// Set loader to a parent
+			controlRecipeHelper();
+			console.log('in control recipe', state.recipe);
 		} catch (error) {
-			alert('Erro processing recipe');
+			alert('Error processing recipe');
 		}
 	}
+};
+
+//Helps the controller recipe set up the view
+const controlRecipeHelper = () => {
+	// prepare ui for changes
+	recipeView.clearRecipe();
+	state.recipe.parseIngredients();
+	clearLoader();
+	// Render recipe
+	recipeView.renderRecipe(state.recipe);
 };
 
 ['hashchange', 'load'].forEach((event) =>
 	window.addEventListener(event, controlRecipe)
 );
 
-//21
+// Handling recipe button clicks
+elements.recipe.addEventListener('click', (e) => {
+	console.log(state.recipe);
+	if (!state.recipe.formatable) {
+		// temp solution since the count of the recipe is a string/symbol "¾"
+		console.log('not formatable ');
+		return;
+	}
+	if (e.target.matches('.btn-decrease, .btn-decrease *')) {
+		// Decreae button is clicked
+		if (state.recipe.servings > 1) {
+			state.recipe.updateServings('dec');
+			recipeView.updateServingsIngredients(state.recipe);
+		}
+	} else if (e.target.matches('btn-increase, .btn-increase *')) {
+		// Increase button is clicked
+		state.recipe.updateServings('inc');
+		recipeView.updateServingsIngredients(state.recipe);
+	}
+});

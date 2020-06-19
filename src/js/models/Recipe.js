@@ -38,8 +38,9 @@ export default class Recipe {
 		this.author = this.recipe.source;
 		this.healthLabels = this.recipe.healthLabels;
 		this.servings = this.recipe.yield;
-		this.instructions = this.recipe.url;
-		this.image = this.recipe.image;
+		this.url = this.recipe.url;
+		this.img = this.recipe.image;
+		this.formatable = true;
 	}
 	parseIngredients() {
 		const unitsLong = [
@@ -52,18 +53,45 @@ export default class Recipe {
 			'teaspoons',
 		];
 		const unitsShort = ['oz', 'oz', 'cup', 'tbsp', 'tbsp', 'tsp', 'tsp'];
+		const units = [...unitsShort, 'kg', 'g'];
+		const unitsLsymbols = [...unitsLong, '½', '¾', '1 ½', '¼'];
+		const unitsSsymbols = [...unitsShort, '1/2', '3/4', '1 1/2', '1/4'];
+
 		const newIngredients = this.ingredients.map((el) => {
 			// Uniform units
 			let ingredient = el.toLowerCase();
-			unitsLong.forEach((unit, i) => {
-				ingredient = ingredient.replace(unit, unitsShort[i]);
+
+			unitsLsymbols.forEach((unit, i) => {
+				ingredient = ingredient.replace(unit, unitsSsymbols[i]);
 			});
 			//  remove parentheses
-			ingredient = ingredient.replace(/ *\([^)]*\) */g, '');
+			ingredient = ingredient.replace(/ *\([^)]*\) */g, ' ');
 
 			//  Parse ingredients into count, unit and ingredient
-			const arrIng = ingredient.split(' ');
-			const unitIndex = arrIng.findIndex((el2) => unitsShort.includes(el2));
+			let arrIng = ingredient.split(' ');
+			// removes from "" array
+			arrIng = arrIng.filter((el2) => {
+				return el2;
+			});
+
+			// Special case, "12 oz of cheese or 1 cup of cheese" find or and cut after it
+			// another case, "4 or 5 fresh basil leaves, shredded"
+			let unitIndex = arrIng.findIndex((el2) => el2 === 'or');
+			if (unitIndex > 0) {
+				console.log('arrIng and unit index ', unitIndex);
+				console.log(arrIng);
+				console.log('arrIng + 1', arrIng[unitIndex + 1]);
+				console.log('true or false ', isNaN(arrIng[unitIndex + 1]));
+				if (unitIndex === 1) {
+					arrIng = arrIng.slice(unitIndex + 1, arrIng.length - 1);
+				} else if (!isNaN(arrIng[unitIndex + 1])) {
+					arrIng = arrIng.slice(0, unitIndex);
+					console.log('else if ', arrIng);
+				}
+				console.log(arrIng);
+			}
+
+			unitIndex = arrIng.findIndex((el2) => units.includes(el2));
 
 			let objIng;
 			if (unitIndex > -1) {
@@ -74,9 +102,34 @@ export default class Recipe {
 				let count;
 
 				if (arrCount.length === 1) {
-					count = eval(arrIng[0].replace('-', '+'));
+					// console.log('test ', arrIng[0].replace('-', '+'));
+					// console.log('arrIng', arrIng);
+					// console.log('arrCount length', arrCount.length, arrCount);
+					try {
+						count = eval(arrIng[0].replace('-', '+'));
+					} catch (error) {
+						// console.log('error parsing to units', error);
+						// special case ["¾", "cup", "shredded", "cheese"]
+						count = arrIng[0];
+						this.formatable = false;
+					}
 				} else {
-					count = eval(arrIng.slice(0, unitIndex).join('+'));
+					// console.log('unitIndex', unitIndex);
+					// console.log('in else parsing arrIng', arrIng);
+					// count = eval(arrIng.slice(0, unitIndex).join('+'));
+					// Removing the or should prevent error and try catch wont be needed
+					// leaving code for now
+					// count = eval(arrIng.slice(0, unitIndex).join('+'));
+					try {
+						count = eval(arrIng.slice(0, unitIndex).join('+'));
+					} catch (error) {
+						// error parsing
+						//  ["1", "½", "cup", "pizza", "sauce", "of", "your", "choice"]
+						//  tries to add "1"+ "½", the second digit is a symbol
+						// console.log('in error ', arrIng.slice(0, unitIndex).join('+'));
+						count = arrIng.slice(0, unitIndex).join(' ');
+						this.formatable = false;
+					}
 				}
 				objIng = {
 					count,
@@ -85,8 +138,11 @@ export default class Recipe {
 				};
 			} else if (parseInt(arrIng[0], 10)) {
 				//There is NO unit, but 1st element is number
+				// let temp = parseFloat(arrIng[0]);
+				// console.log(' eval first digit ', eval(arrIng[0]));
 				objIng = {
-					count: parseInt(arrIng[0], 10),
+					count: eval(arrIng[0]),
+					// count: parseInt(arrIng[0], 10),
 					unit: '',
 					ingredient: arrIng.slice(1).join(' '),
 				};
@@ -104,6 +160,16 @@ export default class Recipe {
 
 		this.ingredients = newIngredients;
 	}
-}
+	updateServings(type) {
+		console.log('in update servings');
+		// Servings
+		const newServings = type === 'dec' ? this.servings - 1 : this.servings + 1;
 
-// 21 19
+		// Ingredients
+		this.ingredients.forEach((ing) => {
+			ing.count *= newServings / this.servings;
+		});
+
+		this.servings = newServings;
+	}
+}
